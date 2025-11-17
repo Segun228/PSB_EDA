@@ -5,8 +5,13 @@ import pandas as pd
 import joblib
 import os
 import numpy as np
+import logging
+import sklearn
+
 
 app = FastAPI(title="Churn Prediction API")
+logging.error(sklearn.__version__)
+
 
 # CORS
 app.add_middleware(
@@ -18,7 +23,7 @@ app.add_middleware(
 
 
 try:
-    MODEL_PATH = os.getenv('MODEL_PATH', 'lrm.joblib')
+    MODEL_PATH = os.getenv('MODEL_PATH', 'logreg_model.joblib')
     model = joblib.load(MODEL_PATH)
     print("✅ Модель успешно загружена")
 except Exception as e:
@@ -68,16 +73,14 @@ def predict_churn(data: CustomerData):
         if model is None:
             raise HTTPException(status_code=500, detail="Model not loaded")
 
-        input_data = pd.DataFrame([data.dict()])
+        input_data = pd.DataFrame([dict(data)])
         
         print(f"📊 Получены данные: {list(input_data.columns)}")
         print(f"🔢 Размер данных: {input_data.shape}")
         
-        # Предсказание
         probability = model.predict_proba(input_data)[0, 1]
         prediction = probability > 0.5
         
-        # Уровень риска
         if probability < 0.3:
             risk = "Низкий"
         elif probability < 0.7:
@@ -92,6 +95,7 @@ def predict_churn(data: CustomerData):
         }
         
     except Exception as e:
+        logging.exception(e)
         print(f"❌ Ошибка предсказания: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Prediction error: {str(e)}")
 
